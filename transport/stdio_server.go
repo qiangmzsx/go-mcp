@@ -2,6 +2,7 @@ package transport
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -57,7 +58,7 @@ func (t *stdioServerTransport) Run() error {
 	return nil
 }
 
-func (t *stdioServerTransport) Send(ctx context.Context, sessionID string, msg Message) error {
+func (t *stdioServerTransport) Send(_ context.Context, _ string, msg Message) error {
 	if _, err := t.writer.Write(append(msg, mcpMessageDelimiter)); err != nil {
 		return fmt.Errorf("failed to write: %w", err)
 	}
@@ -94,7 +95,9 @@ func (t *stdioServerTransport) receive(ctx context.Context) {
 			return
 		default:
 			// filter empty messages
-			if s.Text() == "" || s.Text() == " " {
+			// filter space messages and \t messages
+			if len(bytes.TrimFunc(s.Bytes(), func(r rune) bool { return r == ' ' || r == '\t' })) == 0 {
+				t.logger.Debugf("skipping empty message")
 				continue
 			}
 			if err := t.receiver.Receive(ctx, stdioSessionID, s.Bytes()); err != nil {
