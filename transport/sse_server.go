@@ -3,12 +3,14 @@ package transport
 import (
 	"context"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/google/uuid"
 
@@ -310,7 +312,7 @@ func (t *sseServerTransport) handleMessage(w http.ResponseWriter, r *http.Reques
 	// ref: https://github.com/encode/httpx/blob/master/httpx/_status_codes.py#L8
 	// in official httpx, 2xx is success
 	w.WriteHeader(http.StatusAccepted)
-	if t.openResponse {
+	if t.openResponse && !strings.Contains(gjson.GetBytes(bs, "method").String(), "notifications") {
 		w.Header().Set("Content-Type", "application/json")
 		sessionMessageChan, ok := t.sessionStore.Load(sessionID + "-message")
 		if !ok {
