@@ -89,6 +89,8 @@ func currentTime(request *protocol.CallToolRequest) (*protocol.CallToolResult, e
 
 	loc, err := time.LoadLocation(req.Timezone)
 	if err != nil {
+		// fmt.Fprintf(os.Stderr, "server StdErr:Error loading timezone: %v\n", err)
+		log.Printf("server StdErr:Error loading timezone: %v\n", err)
 		return nil, fmt.Errorf("parse timezone with error: %v", err)
 	}
 	text := fmt.Sprintf(`current time is %s`, time.Now().In(loc))

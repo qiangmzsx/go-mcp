@@ -32,6 +32,7 @@ type stdioClientTransport struct {
 	cmd      *exec.Cmd
 	receiver clientReceiver
 	reader   io.Reader
+	readErr  io.Reader
 	writer   io.WriteCloser
 
 	logger pkg.Logger
@@ -40,7 +41,7 @@ type stdioClientTransport struct {
 	receiveShutDone chan struct{}
 }
 
-func NewStdioClientTransport(command string, args []string, opts ...StdioClientTransportOption) (ClientTransport, error) {
+func NewStdioClientTransport(command string, args []string, opts ...StdioClientTransportOption) (*stdioClientTransport, error) {
 	cmd := exec.Command(command, args...)
 
 	cmd.Env = os.Environ()
@@ -54,10 +55,14 @@ func NewStdioClientTransport(command string, args []string, opts ...StdioClientT
 	if err != nil {
 		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
-
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
 	t := &stdioClientTransport{
 		cmd:             cmd,
 		reader:          stdout,
+		readErr:         stderr,
 		writer:          stdin,
 		logger:          pkg.DefaultLogger,
 		receiveShutDone: make(chan struct{}),
@@ -85,6 +90,10 @@ func (t *stdioClientTransport) Start() error {
 	}()
 
 	return nil
+}
+
+func (t *stdioClientTransport) GetStderr() io.Reader {
+	return t.readErr
 }
 
 func (t *stdioClientTransport) Send(_ context.Context, msg Message) error {
